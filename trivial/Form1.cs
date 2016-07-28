@@ -20,18 +20,28 @@ namespace trivial {
 
         private void button1_Click(object sender, EventArgs e) {
             backgroundWorker1.DoWork += (_s, _e) => {
+                Console.WriteLine("start");
                 string dirName = "snpPerGene";
                 var fnames = Directory.GetFiles(dirName, "*.report");
                 var lines = fnames.Select(fname => File.ReadLines(fname));
-                var geneNameCounts = lines.Select(data => {
-                    var _data = data.Where(line => line.Length>10 && !line.Contains("DIST"));
+                var geneNameCounts = fnames.Select(fname => { 
+                    var _data = File.ReadLines(fname).Where(line => line.Length > 10 && !line.Contains("DIST"));
                     int length = _data.Count();
                     var names = _data.Where(line => line[0] != ' ');
-                    var __data = _data.Select((line, i) => new { line, i }).Where(x => x.line[0] != ' ').Select(x=>x.i).Concat(new int[] { length });
+                    var __data = _data.Select((line, i) => new { line, i }).Where(x => x.line[0] != ' ').Select(x => x.i).Concat(new int[] { length });
                     var _nums = __data.Skip(1);
-                    return names.Zip( _nums.Zip(__data, (a, b) => a - b),(name,count)=>new { name, count }).OrderBy(x=>x.name);
+                    return new { fname, dic= names.Zip(_nums.Zip(__data, (a, b) => a - b), (name, count) => new { name, count }).ToDictionary(x => x.name, x => x.count) };
                 });
-
+                var fullNames = geneNameCounts.First().dic.Keys.Union(geneNameCounts.Skip(1).First().dic.Keys);
+                foreach (var item in geneNameCounts.Skip(2)) {
+                    fullNames = fullNames.Union(item.dic.Keys);
+                }
+                var outName = dirName + "\\result.txt";
+                File.WriteAllText(outName, geneNameCounts.Select(data => data.fname.Split('\\').Last().Split("_plink").First()).Join("\t"));
+                File.AppendAllLines(outName, fullNames.Select(name =>
+                       geneNameCounts.Select(data => data.dic[name].ToString()).Join("\t")
+                ));
+                Console.WriteLine("finish");
             };
             backgroundWorker1.RunWorkerAsync();
         }
