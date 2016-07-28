@@ -27,19 +27,20 @@ namespace trivial {
                 var geneNameCounts = fnames.Select(fname => { 
                     var _data = File.ReadLines(fname).Where(line => line.Length > 10 && !line.Contains("DIST"));
                     int length = _data.Count();
-                    var names = _data.Where(line => line[0] != ' ');
+                    var names = _data.Where(line => line[0] != ' ').Select(line=>line.Split(':').First());
                     var __data = _data.Select((line, i) => new { line, i }).Where(x => x.line[0] != ' ').Select(x => x.i).Concat(new int[] { length });
                     var _nums = __data.Skip(1);
                     return new { fname, dic= names.Zip(_nums.Zip(__data, (a, b) => a - b), (name, count) => new { name, count }).ToDictionary(x => x.name, x => x.count) };
-                });
-                var fullNames = geneNameCounts.First().dic.Keys.Union(geneNameCounts.Skip(1).First().dic.Keys);
+                }).ToArray();
+                var _fullNames = geneNameCounts.First().dic.Keys.Union(geneNameCounts.Skip(1).First().dic.Keys);
                 foreach (var item in geneNameCounts.Skip(2)) {
-                    fullNames = fullNames.Union(item.dic.Keys);
+                    _fullNames = _fullNames.Union(item.dic.Keys);
                 }
+                var fullNames = _fullNames.ToArray();
                 var outName = dirName + "\\result.txt";
-                File.WriteAllText(outName, geneNameCounts.Select(data => data.fname.Split('\\').Last().Split("_plink").First()).Join("\t"));
+                File.WriteAllLines(outName,new string[] { "chr\tgene\t" + geneNameCounts.Select(data => data.fname.Split('\\').Last().Split("_plink").First()).Join("\t") });
                 File.AppendAllLines(outName, fullNames.Select(name =>
-                       geneNameCounts.Select(data => data.dic[name].ToString()).Join("\t")
+                      name.Split(' ').Last()+"\t"+ name.Split(' ').First()+"\t"+ geneNameCounts.Select(data => data.dic[name].ToString()).Join("\t")
                 ));
                 Console.WriteLine("finish");
             };
